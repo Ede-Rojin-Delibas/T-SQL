@@ -74,4 +74,82 @@ FROM LAB08
 UPDATE LAB08 SET SURNAME=(SELECT TOP 1 VALUE FROM string_split(NAMESURNAME,' ',1) ORDER BY ordinal desc)
 UPDATE LAB08 SET NAME_=REPLACE(NAMESURNAME,' '+SURNAME,'')
 SELECT * FROM LAB08
---9)
+--9)Elimizde müþterilerimizin olduðu bir vt var. Burada iki isimli kullanýcýlarýn isimleri yazýlýrken 
+-- düzensiz bir þekilde birden fazla boþluk kullanýlmýþ. Ayrýca ikinci isimler tamamen küçük harfle yazýlmýþ.
+--Burada isimler arasýndaki boþluðu 1'e indiriniz ve ikinci isimleri de ilk harf büyük olacak þekilde update ediniz.
+SELECT ID,NAME_,SURNAME,NAMESURNAME FROM LAB09 WHERE NAME_ LIKE '% %' --iki isimlileri yakalamak için
+UPDATE LAB09 SET NAME_= REPLACE(NAME_,'   ', ' ')
+UPDATE LAB09 SET NAME_= REPLACE(NAME_,'  ', ' ')
+--Ýkinci isimleri küçük yapmak için isim bölümünde ayýrma iþlemi yapmalýyýz.
+SELECT ID, NAME_,SURNAME,NAME_1,
+UPPER(LEFT(NAME_2,1))+
+SUBSTRING(NAME_2,2,LEN(NAME_2) - 1)
+FROM 
+(
+SELECT ID,NAME_,SURNAME,NAMESURNAME,
+(SELECT VALUE FROM string_split(NAME_,' ', 1) WHERE ordinal=1) NAME_1,
+(SELECT VALUE FROM string_split(NAME_,' ', 1) WHERE ordinal=2) NAME_2	
+FROM LAB09 WHERE NAME_ LIKE '% %'
+) T
+
+UPDATE LAB09 SET NAME_ =(SELECT VALUE FROM string_split(NAME_,' ', 1) WHERE ordinal=1)+' '+
+UPPER(LEFT(
+(SELECT VALUE FROM string_split(NAME_,' ', 1) WHERE ordinal=2)
+,1))+ 
++UPPER(SUBSTRING(
+(SELECT VALUE FROM string_split(NAME_,' ', 1) WHERE ordinal=2)
+,2,100))
+WHERE NAME_ LIKE '% %'
+
+SELECT * FROM LAB09
+WHERE NAME_ LIKE '% %'
+-- FARKLI BÝR YÖNTEM
+WITH NameParts AS (
+    SELECT 
+        ID, 
+        NAME_, 
+        SURNAME, 
+        NAMESURNAME,
+        LEFT(NAME_, CHARINDEX(' ', NAME_ + ' ') - 1) AS NAME_1,
+        SUBSTRING(NAME_, CHARINDEX(' ', NAME_ + ' ') + 1, LEN(NAME_)) AS NAME_2
+    FROM LAB09 
+    WHERE NAME_ LIKE '% %'
+)
+UPDATE LAB09
+SET NAME_ = NAME_1 + ' ' + UPPER(LEFT(NAME_2, 1)) + LOWER(SUBSTRING(NAME_2, 2, LEN(NAME_2)))
+FROM NameParts
+WHERE LAB09.ID = NameParts.ID;
+SELECT * FROM LAB09
+WHERE NAME_ LIKE '% %' 
+--Datetime Fonksiyonlarý:
+--Anlýk tarih saat bilgisini getiren fonksiyonlar
+SELECT 
+GETDATE() "GETDATE",
+SYSDATETIME() "SYSDATETIME",
+SYSDATETIMEOFFSET() "SYSDATETIMEOFFSET",
+SYSUTCDATETIME() "SYSUTCDATETIME",
+CURRENT_TIMESTAMP "CURRENT_TIMESTAMP",
+GETUTCDATE() "GETUTCDATE" 
+
+-- Doðum tarihinizi içeren bir tablo oluþturma
+CREATE TABLE Persons (
+    ID int PRIMARY KEY,
+    Name varchar(255),
+    BirthDate date
+);
+
+-- Örnek veri ekleme
+INSERT INTO Persons (ID, Name, BirthDate) VALUES (1, 'Ede Rojin Delibas', '2003-08-08');
+
+-- Yaþ hesaplama
+SELECT 
+    Name,
+    BirthDate,
+    DATEDIFF(year, BirthDate, GETDATE()) - 
+    CASE 
+        WHEN MONTH(BirthDate) > MONTH(GETDATE()) OR (MONTH(BirthDate) = MONTH(GETDATE()) AND DAY(BirthDate) > DAY(GETDATE())) 
+        THEN 1 
+        ELSE 0 
+    END AS Age
+FROM Persons;
+
